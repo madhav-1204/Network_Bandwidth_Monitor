@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Bandwidth Monitor | CN Lab Project</title>
+  <meta name="description" content="Real-time Network Traffic and Protocol Bandwidth Monitor for Computer Networks Lab Project. Displays Download, Upload, Packets/sec, and TCP/UDP/ICMP distribution.">
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+      <div class="nav-brand">
+        <div class="pulse-indicator" id="network-pulse"></div>
+        <div class="brand-text">
+          <span class="brand-title">NETWORK MONITOR</span>
+          <span class="brand-subtitle">Computer Networks Lab Project #10</span>
+        </div>
+      </div>
+
+      <div class="nav-controls">
+        <div class="control-group">
+          <label for="interface-select">Interface:</label>
+          <select id="interface-select" class="select-pill">
+            <option value="All">All Interfaces</option>
+          </select>
+        </div>
+
+        <div class="mode-toggle-group">
+          <button id="btn-mode-live" class="pill-btn active">Live Traffic</button>
+          <button id="btn-mode-demo" class="pill-btn">Demo Mode</button>
+        </div>
+
+        <div class="status-badge" id="ws-status">
+          <span class="status-dot"></span>
+          <span id="ws-status-text">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="dashboard-content">
+      
+      <!-- Primary Metrics Cards -->
+      <section class="metrics-grid">
+        <!-- Download Speed Card -->
+        <div class="metric-card card-download">
+          <div class="card-glow"></div>
+          <div class="metric-header">
+            <span class="metric-label">Download Speed</span>
+            <span class="metric-icon">📥</span>
+          </div>
+          <div class="metric-body">
+            <span class="metric-value" id="val-download">0.0</span>
+            <span class="metric-unit">Mbps</span>
+          </div>
+          <div class="metric-footer">
+            <span class="sub-stat">Peak: <strong id="val-peak-download">0.0 Mbps</strong></span>
+            <span class="sub-stat">Total: <strong id="val-total-rx">0.0 MB</strong></span>
+            <div class="mini-activity-bar" id="down-activity-bar"></div>
+          </div>
+        </div>
+
+        <!-- Upload Speed Card -->
+        <div class="metric-card card-upload">
+          <div class="card-glow"></div>
+          <div class="metric-header">
+            <span class="metric-label">Upload Speed</span>
+            <span class="metric-icon">📤</span>
+          </div>
+          <div class="metric-body">
+            <span class="metric-value" id="val-upload">0.0</span>
+            <span class="metric-unit">Mbps</span>
+          </div>
+          <div class="metric-footer">
+            <span class="sub-stat">Peak: <strong id="val-peak-upload">0.0 Mbps</strong></span>
+            <span class="sub-stat">Total: <strong id="val-total-tx">0.0 MB</strong></span>
+            <div class="mini-activity-bar" id="up-activity-bar"></div>
+          </div>
+        </div>
+
+        <!-- Packets Velocity Card -->
+        <div class="metric-card card-pps">
+          <div class="card-glow"></div>
+          <div class="metric-header">
+            <span class="metric-label">Packet Velocity</span>
+            <span class="metric-icon">⚡</span>
+          </div>
+          <div class="metric-body">
+            <span class="metric-value" id="val-pps">0</span>
+            <span class="metric-unit">Pkts/sec</span>
+          </div>
+          <div class="metric-footer">
+            <span class="sub-stat">Peak: <strong id="val-peak-pps">0</strong>/s</span>
+            <span class="sub-stat">Rx: <strong id="val-rx-pps">0</strong>/s</span>
+            <span class="sub-stat">Tx: <strong id="val-tx-pps">0</strong>/s</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Protocol Distribution Section (Highlight from Assignment) -->
+      <section class="section-card protocol-card">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Protocol Distribution</h2>
+            <p class="section-desc">Transport & Network layer segmentation based on kernel packet counters</p>
+          </div>
+          <div class="total-proto-pill">
+            Total Analyzed: <span id="val-total-proto">0</span> pkts/s
+          </div>
+        </div>
+
+        <!-- Multi-segment proportional stacked ribbon -->
+        <div class="proto-ribbon">
+          <div class="ribbon-segment segment-tcp" id="ribbon-tcp" style="width: 66.7%;"></div>
+          <div class="ribbon-segment segment-udp" id="ribbon-udp" style="width: 22.2%;"></div>
+          <div class="ribbon-segment segment-icmp" id="ribbon-icmp" style="width: 11.1%;"></div>
+        </div>
+
+        <!-- Exact Problem Statement Block Display + Dynamic Meter -->
+        <div class="protocol-rows">
+          
+          <!-- TCP Row -->
+          <div class="proto-row">
+            <div class="proto-meta">
+              <span class="proto-tag tag-tcp">TCP</span>
+              <span class="proto-full-name">Transmission Control Protocol</span>
+            </div>
+            <div class="proto-blocks-container">
+              <span class="proto-block-meter meter-tcp" id="blocks-tcp">████████████</span>
+            </div>
+            <div class="proto-bar-track">
+              <div class="proto-bar-fill fill-tcp" id="bar-tcp" style="width: 66.7%;"></div>
+            </div>
+            <div class="proto-stats">
+              <span class="proto-pct" id="pct-tcp">66.7%</span>
+              <span class="proto-rate" id="rate-tcp">820 pkts/s</span>
+            </div>
+          </div>
+
+          <!-- UDP Row -->
+          <div class="proto-row">
+            <div class="proto-meta">
+              <span class="proto-tag tag-udp">UDP</span>
+              <span class="proto-full-name">User Datagram Protocol</span>
+            </div>
+            <div class="proto-blocks-container">
+              <span class="proto-block-meter meter-udp" id="blocks-udp">████</span>
+            </div>
+            <div class="proto-bar-track">
+              <div class="proto-bar-fill fill-udp" id="bar-udp" style="width: 22.2%;"></div>
+            </div>
+            <div class="proto-stats">
+              <span class="proto-pct" id="pct-udp">22.2%</span>
+              <span class="proto-rate" id="rate-udp">275 pkts/s</span>
+            </div>
+          </div>
+
+          <!-- ICMP Row -->
+          <div class="proto-row">
+            <div class="proto-meta">
+              <span class="proto-tag tag-icmp">ICMP</span>
+              <span class="proto-full-name">Internet Control Message Protocol</span>
+            </div>
+            <div class="proto-blocks-container">
+              <span class="proto-block-meter meter-icmp" id="blocks-icmp">██</span>
+            </div>
+            <div class="proto-bar-track">
+              <div class="proto-bar-fill fill-icmp" id="bar-icmp" style="width: 11.1%;"></div>
+            </div>
+            <div class="proto-stats">
+              <span class="proto-pct" id="pct-icmp">11.1%</span>
+              <span class="proto-rate" id="rate-icmp">145 pkts/s</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Waveform Real-Time Chart & Traffic Generator Row -->
+      <section class="chart-and-actions-grid">
+        
+        <!-- Live Waveform Chart -->
+        <div class="section-card chart-card">
+          <div class="section-header">
+            <h2 class="section-title">Live Bandwidth Waveform</h2>
+            <div class="chart-legend">
+              <span class="legend-item"><span class="legend-dot dot-down"></span> Download (Mbps)</span>
+              <span class="legend-item"><span class="legend-dot dot-up"></span> Upload (Mbps)</span>
+            </div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="traffic-canvas" width="800" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- Traffic Injector (Lab Demo Tool) -->
+        <div class="section-card actions-card">
+          <div class="section-header">
+            <h2 class="section-title">Lab Traffic Injector</h2>
+            <button id="btn-reset-peaks" class="pill-btn small-btn" title="Reset Peak Speeds">↺ Reset Peaks</button>
+          </div>
+          <p class="card-caption">
+            Trigger live payloads or high-speed bandwidth benchmarks to demonstrate real-time meter reactions.
+          </p>
+          <div class="inject-buttons">
+            <button id="btn-inject-speedtest" class="action-btn btn-speedtest">
+              <span class="btn-icon">🚀</span>
+              <div class="btn-content">
+                <strong>Run 100+ Mbps Speed Benchmark</strong>
+                <small>Multi-stream test saturating bandwidth for 6s</small>
+              </div>
+            </button>
+
+            <button id="btn-inject-icmp" class="action-btn btn-icmp">
+              <span class="btn-icon">🔔</span>
+              <div class="btn-content">
+                <strong>Ping Test (ICMP)</strong>
+                <small>Sends 5 echo requests to 8.8.8.8</small>
+              </div>
+            </button>
+
+            <button id="btn-inject-udp" class="action-btn btn-udp">
+              <span class="btn-icon">⚡</span>
+              <div class="btn-content">
+                <strong>UDP Burst (Datagrams)</strong>
+                <small>Sends 300 UDP test packets</small>
+              </div>
+            </button>
+
+            <button id="btn-inject-tcp" class="action-btn btn-tcp">
+              <span class="btn-icon">🌊</span>
+              <div class="btn-content">
+                <strong>TCP Stream (Download)</strong>
+                <small>Streams HTTP payload for 4s</small>
+              </div>
+            </button>
+          </div>
+          <div id="inject-feedback" class="inject-status-box">Ready for traffic injection.</div>
+        </div>
+
+      </section>
+
+      <!-- Active Socket Connections Table -->
+      <section class="section-card connections-card">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Active Sockets Inspector</h2>
+            <p class="section-desc">Live TCP & UDP endpoints registered in operating system socket table</p>
+          </div>
+          <button id="btn-refresh-conns" class="pill-btn small-btn">⟳ Refresh Sockets</button>
+        </div>
+        <div class="table-container">
+          <table class="conns-table">
+            <thead>
+              <tr>
+                <th>Protocol</th>
+                <th>Local Address</th>
+                <th>Remote Address</th>
+                <th>State</th>
+                <th>PID</th>
+              </tr>
+            </thead>
+            <tbody id="conns-tbody">
+              <tr>
+                <td colspan="5" class="table-loading">Scanning active sockets...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>CN Lab Project: Network Bandwidth Monitor</span>
+      <span>Supports CLI Terminal (<code>python monitor.py</code>) &amp; Web GUI</span>
+    </footer>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="/static/app.js"></script>
+</body>
+</html>
